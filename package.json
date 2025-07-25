@@ -1,0 +1,14 @@
+{
+  "name": "votes-topserveur",
+  "version": "1.0.0",
+  "main": "saveVotes.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node saveVotes.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.11.1",
+    "node-fetch": "^3.3.2",
+    "undici": "^7.12.0"
+  }
+}
