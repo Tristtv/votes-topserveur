@@ -8,6 +8,7 @@ on:
 jobs:
   run-script:
     runs-on: ubuntu-latest
+    timeout-minutes: 5  # ⏰ Ajoute cette ligne pour éviter les boucles de 6h
 
     steps:
       - name: 📥 Cloner le repo
