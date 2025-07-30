@@ -1,74 +1,60 @@
-const { fetch } = require('undici');
-const admin = require('firebase-admin');
+const admin = require("firebase-admin");
+const { initializeApp } = require("firebase/app");
+const { getDatabase, ref, set } = require("firebase/database");
+const fetch = (...args) => import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
-// 🔐 Lire la clé depuis la variable d'environnement FIREBASE_KEY
+// 🔐 Lire la clé FIREBASE_KEY depuis la variable d'environnement
 console.log("🔐 Lecture de la clé FIREBASE_KEY...");
-const firebaseKey = process.env.FIREBASE_KEY;
-
-if (!firebaseKey) {
-  console.error("❌ Erreur : variable d'environnement FIREBASE_KEY introuvable.");
-  process.exit(1);
+if (!process.env.FIREBASE_KEY) {
+  throw new Error("❌ Erreur : variable d'environnement FIREBASE_KEY introuvable.");
 }
 
-let serviceAccount;
-try {
-  serviceAccount = JSON.parse(firebaseKey);
-} catch (error) {
-  console.error("❌ Erreur : impossible de lire ou parser FIREBASE_KEY.");
-  process.exit(1);
-}
+const firebaseConfig = {
+  credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_KEY)),
+  databaseURL: "https://projecttogether-26e40-default-rtdb.europe-west1.firebasedatabase.app/",
+};
 
-// 🔗 Initialiser Firebase
 console.log("🧩 Initialisation Firebase...");
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://projecttogether-26e40-default-rtdb.europe-west1.firebasedatabase.app/"
+admin.initializeApp(firebaseConfig);
+
+const firebaseApp = initializeApp({
+  databaseURL: firebaseConfig.databaseURL,
 });
 
-const db = admin.database();
+const db = getDatabase(firebaseApp);
 
-// 🔧 Nettoyage du nom du joueur
-function sanitize(name) {
-  return name.replace(/[.#$/\[\]]/g, '_');
-}
-
-// 🔄 Récupération des votes depuis l’API
+// 🌐 Fonction pour récupérer les votes depuis l’API Top-Serveur
 async function getVotes() {
   console.log("🌐 Récupération des votes depuis Top-Serveur...");
-  const response = await fetch('https://api.top-serveurs.net/v1/servers/E35CNFSUG83F2X/players-ranking');
-  if (!response.ok) {
-    throw new Error(`Erreur API : ${response.status} ${response.statusText}`);
-  }
-  const data = await response.json();
-  console.log(`📥 ${data.players.length} joueurs récupérés.`);
-  return data.players;
+  const res = await fetch("https://api.top-serveurs.net/v1/servers/E35CNFSUG83F2X/players-ranking");
+  const json = await res.json();
+  console.log(`📥 ${json.players.length} joueurs récupérés.`);
+  return json.players;
 }
 
-// 💾 Enregistrement dans Firebase
+// 💾 Fonction principale de sauvegarde
 async function saveVotes() {
-  try {
-    const players = await getVotes();
-    const month = new Date().toISOString().slice(0, 7); // ex: "2025-07"
+  const moisActuel = new Date().toISOString().slice(0, 7); // ex: "2025-07"
+  console.log("🚀 Démarrage du script de sauvegarde des votes...");
 
-    console.log(`🗃️ Sauvegarde des votes pour le mois : ${month}`);
+  const votes = await getVotes();
 
-    const updates = {};
-    players.forEach(player => {
-      const safeName = sanitize(player.playername);
-      updates[`${month}/${safeName}`] = player.votes;
-    });
+  console.log("🗃️ Sauvegarde des votes pour le mois :", moisActuel);
 
-    console.log("📤 Envoi des données vers Firebase...");
-    await db.ref('votes').update(updates);
-
-    console.log(`✅ ${players.length} votes enregistrés pour le mois ${month}.`);
-  } catch (error) {
-    console.error("❌ Erreur pendant l'enregistrement des votes :", error);
-    process.exit(1);
+  const data = {};
+  for (const player of votes) {
+    const pseudo = player.playername.replace(/[.#$/[\]]/g, "_"); // nettoyer pour Firebase
+    data[pseudo] = player.votes;
   }
+
+  console.log("📤 Envoi des données vers Firebase...");
+  await set(ref(db, `votes/${moisActuel}`), data);
+
+  console.log(`✅ ${votes.length} votes enregistrés pour le mois ${moisActuel}.`);
 }
 
 // ▶️ Lancer le script
-saveVotes();
-// Exécuter la fonction saveVotes pour démarrer le processus
-console.log("🚀 Démarrage du script de sauvegarde des votes...");
+saveVotes().catch((err) => {
+  console.error("❌ Erreur pendant l'enregistrement des votes :", err);
+});
+// Exécuter le script toutes les 24 heures
