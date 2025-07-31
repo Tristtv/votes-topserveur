@@ -1,28 +1,30 @@
-name: Enregistrer les votes automatiquement
+name: Sauvegarde votes Top-Serveur
 
 on:
   schedule:
-    - cron: "0 6 * * *"  # Tous les jours à 6h du matin UTC (8h en France)
-  workflow_dispatch:     # Permet de lancer manuellement si besoin
+    - cron: '0 1 * * *' # Tous les jours à 1h du matin UTC
+  workflow_dispatch:     # Permet aussi de lancer manuellement
 
 jobs:
-  run-script:
+  save_votes:
     runs-on: ubuntu-latest
-    timeout-minutes: 5  # ⏰ Ajoute cette ligne pour éviter les boucles de 6h
 
     steps:
-      - name: 📥 Cloner le repo
+      - name: 📥 Cloner le dépôt
         uses: actions/checkout@v3
 
-      - name: 🧰 Installer Node.js
+      - name: 📦 Installer Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 20
+          node-version: '18'
 
       - name: 📦 Installer les dépendances
         run: npm install
 
-      - name: 🚀 Exécuter le script saveVotes.js
-        env:
-          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
+      - name: 🔐 Définir la clé FIREBASE_KEY
+        run: |
+          echo "${{ secrets.FIREBASE_KEY }}" > firebaseKey.json
+          echo "FIREBASE_KEY=$(cat firebaseKey.json)" >> $GITHUB_ENV
+
+      - name: 🚀 Lancer le script saveVotes.js
         run: node saveVotes.js
