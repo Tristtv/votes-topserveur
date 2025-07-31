@@ -65,4 +65,4 @@ async function saveVotes() {
 saveVotes().catch((err) => {
   console.error("❌ Erreur pendant l'enregistrement des votes :", err);
 });
-// Exécuter le script toutes les 24 heures
+// Exécuter la fonction de sauvegarde toutes les 24 heures
