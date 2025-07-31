@@ -2,7 +2,7 @@ name: Sauvegarde votes Top-Serveur
 
 on:
   schedule:
-    - cron: '0 1 * * *' # Tous les jours à 1h UTC
+    - cron: '0 1 * * *'  # tous les jours à 1h du matin (UTC)
   workflow_dispatch:
 
 jobs:
@@ -21,10 +21,9 @@ jobs:
       - name: 📦 Installer les dépendances
         run: npm install
 
-      - name: 🔐 Écrire le fichier serviceAccountKey.json depuis le secret
-        run: echo "${{ secrets.FIREBASE_KEY }}" > serviceAccountKey.json
+      - name: 🔐 Créer serviceAccountKey.json
+        run: |
+          echo "${{ secrets.FIREBASE_KEY }}" | base64 -d > serviceAccountKey.json
 
       - name: 🚀 Lancer le script saveVotes.js
         run: node saveVotes.js
-        env:
-          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
