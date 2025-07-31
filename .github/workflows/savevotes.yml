@@ -2,12 +2,14 @@ name: Sauvegarde votes Top-Serveur
 
 on:
   schedule:
-    - cron: '0 1 * * *'  # tous les jours à 1h du matin (UTC)
+    - cron: '0 1 * * *'
   workflow_dispatch:
 
 jobs:
   save_votes:
     runs-on: ubuntu-latest
+    env:
+      FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
 
     steps:
       - name: 📥 Cloner le dépôt
@@ -20,10 +22,6 @@ jobs:
 
       - name: 📦 Installer les dépendances
         run: npm install
-
-      - name: 🔐 Créer serviceAccountKey.json
-        run: |
-          echo "${{ secrets.FIREBASE_KEY }}" | base64 -d > serviceAccountKey.json
 
       - name: 🚀 Lancer le script saveVotes.js
         run: node saveVotes.js
