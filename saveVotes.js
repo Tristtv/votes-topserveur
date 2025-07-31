@@ -62,7 +62,10 @@ async function saveVotes() {
 }
 
 // ▶️ Lancer le script
+
 saveVotes().catch((err) => {
   console.error("❌ Erreur pendant l'enregistrement des votes :", err);
+  process.exit(1); // en cas d'erreur
+}).finally(() => {
+  process.exit(0); // en cas de succès
 });
-// Exécuter la fonction de sauvegarde toutes les 24 heures
