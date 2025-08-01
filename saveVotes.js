@@ -1,6 +1,6 @@
 const admin = require("firebase-admin");
 const { initializeApp } = require("firebase/app");
-const { getDatabase, ref, set, get } = require("firebase/database");
+const { getDatabase, ref, get, update } = require("firebase/database");
 const fetch = (...args) => import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
 // 🔐 Lire la clé FIREBASE_KEY depuis la variable d'environnement
@@ -44,7 +44,7 @@ async function getVotes() {
 async function saveVotes() {
   const now = new Date();
   const dateFr = new Date(now.getTime() + 2 * 60 * 60 * 1000); // UTC+2 (heure de Paris)
-  const moisActuel = dateFr.toISOString().slice(0, 7); // ex: "2025-07"
+  const moisActuel = dateFr.toISOString().slice(0, 7); // ex: "2025-08"
   console.log("🚀 Démarrage du script de sauvegarde des votes...");
 
   const votes = await getVotes();
@@ -59,24 +59,31 @@ async function saveVotes() {
 
   const voteRef = ref(db, `votes/${moisActuel}`);
 
-  // ❌ Ne pas écraser les votes existants
+  // 🔄 Récupérer les données existantes pour les fusionner
   const snapshot = await get(voteRef);
-  if (snapshot.exists()) {
-    throw new Error(`❌ Des votes existent déjà pour ${moisActuel}. Script annulé pour éviter l'écrasement.`);
+  const existing = snapshot.exists() ? snapshot.val() : {};
+
+  // 🔁 Fusionner (addition des votes si déjà présent)
+  for (const pseudo in data) {
+    if (existing[pseudo]) {
+      existing[pseudo] += data[pseudo]; // ajouter les votes
+    } else {
+      existing[pseudo] = data[pseudo]; // ou créer la valeur
+    }
   }
 
-  console.log("📤 Envoi des données vers Firebase...");
-  await set(voteRef, data);
+  console.log("📤 Envoi des données fusionnées vers Firebase...");
+  await update(voteRef, existing);
 
-  console.log(`✅ ${votes.length} votes enregistrés pour le mois ${moisActuel}.`);
+  console.log(`✅ ${votes.length} votes fusionnés et enregistrés pour le mois ${moisActuel}.`);
 }
 
 // ▶️ Lancer le script
 saveVotes().catch((err) => {
   console.error("❌ Erreur pendant l'enregistrement des votes :", err);
-  process.exit(1); // en cas d'erreur
+  process.exit(1);
 }).finally(() => {
-  process.exit(0); // en cas de succès
+  process.exit(0);
 });
 // Fin du script
-console.log("🛑 Script terminé.") ;
+console.log("🛑 Script terminé.");
